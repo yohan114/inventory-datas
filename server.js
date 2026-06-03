@@ -1,11 +1,10 @@
 const express = require('express');
-const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const os = require('os');
 const XLSX = require('xlsx');
 const pdfParse = require('pdf-parse');
+const db = require('./db');
 
 const app = express();
 const PORT = 4000;
@@ -13,59 +12,38 @@ const PORT = 4000;
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static(__dirname));
 
-const DB_PATH = path.join(__dirname, 'inventory.accdb');
+const DB_PATH = path.join(__dirname, 'inventory.db');
 
-// Helper to run a PowerShell DB script with robust Base64 parameters and fast non-profile startup
-function runDbQuery(psScript, inputData = null) {
-    const uniqueId = crypto.randomBytes(6).toString('hex');
-    const tempPath = path.join(__dirname, `_query_${uniqueId}.ps1`);
+const classifyItem = (name) => {
+    if (!name) return 'General Items';
+    const lower = name.toLowerCase();
     
-    let fullScript = `$ErrorActionPreference = 'Stop'\n`;
-    
-    if (inputData !== null) {
-        const base64Str = Buffer.from(JSON.stringify(inputData)).toString('base64');
-        fullScript += `$base64Input = "${base64Str}"\n`;
-        fullScript += `$decodedBytes = [System.Convert]::FromBase64String($base64Input)\n`;
-        fullScript += `$jsonText = [System.Text.Encoding]::UTF8.GetString($decodedBytes)\n`;
-        fullScript += `$params = $jsonText | ConvertFrom-Json\n`;
+    if (lower.includes('filter') || lower.includes('cleaner') || lower.includes('element')) {
+        return 'Filters';
     }
-    
-    fullScript += psScript;
-    fs.writeFileSync(tempPath, fullScript, 'utf8');
-    
-    let retries = 5;
-    let delay = 100;
-    
-    try {
-        while (retries > 0) {
-            try {
-                const output = execSync(`powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${tempPath}"`, { 
-                    encoding: 'utf8', 
-                    stdio: ['pipe', 'pipe', 'pipe'], 
-                    maxBuffer: 1024 * 1024 * 100 
-                });
-                return JSON.parse(output.trim() || '[]');
-            } catch (e) {
-                const errStr = (e.message || '') + ' ' + (e.stderr || '');
-                const isLockError = errStr.toLowerCase().includes("lock") || errStr.toLowerCase().includes("sharing") || errStr.toLowerCase().includes("in use");
-                if (isLockError && retries > 1) {
-                    retries--;
-                    console.warn(`Database locked or busy, retrying in ${delay}ms... (${retries} retries left)`);
-                    execSync(`powershell -Command "Start-Sleep -Milliseconds ${delay}"`);
-                    delay *= 2;
-                    continue;
-                }
-                console.error("DB Query Error:", e.message);
-                if (e.stderr) {
-                    console.error("PowerShell Stderr:", e.stderr);
-                }
-                throw e;
-            }
-        }
-    } finally {
-        try { fs.unlinkSync(tempPath); } catch (err) {}
+    if (lower.includes('battery') || lower.includes('batt') || lower.includes('accumulator') || lower.includes('battey')) {
+        return 'Battery';
     }
-}
+    if (lower.includes('tyre') || lower.includes('tire') || lower.includes('tube') || lower.includes('flap')) {
+        return 'Tyre';
+    }
+    if (lower.includes('oil') || lower.includes('grease') || lower.includes('lubricant') || lower.includes('coolant') || lower.includes('fluid') || lower.includes('petrol') || lower.includes('diesel')) {
+        return 'Oil & Lubricants';
+    }
+    if (lower.includes('bearing') || lower.includes('seal') || lower.includes('gasket') || lower.includes('o-ring') || lower.includes('o ring') || lower.includes('bush') || lower.includes('spacer') || lower.includes('shim')) {
+        return 'Bearings & Seals';
+    }
+    if (lower.includes('hydraulic') || lower.includes('hose') || lower.includes('coupling') || lower.includes('cylinder') || lower.includes('fittings') || lower.includes('adapter') || lower.includes('valve') || lower.includes('pump')) {
+        return 'Hydraulics';
+    }
+    if (lower.includes('cable') || lower.includes('switch') || lower.includes('light') || lower.includes('bulb') || lower.includes('wire') || lower.includes('harness') || lower.includes('solenoid') || lower.includes('starter') || lower.includes('alternator') || lower.includes('dynamo') || lower.includes('sensor') || lower.includes('relay') || lower.includes('fuse') || lower.includes('horn') || lower.includes('meter')) {
+        return 'Electrical';
+    }
+    if (lower.includes('belt') || lower.includes('v-belt') || lower.includes('v belt')) {
+        return 'Belts';
+    }
+    return 'General Items';
+};
 
 // Heuristic PDF Parser logic
 function parsePdfTextHeuristically(text) {
@@ -96,7 +74,7 @@ function parsePdfTextHeuristically(text) {
     }
 
     // 2. Extract Date
-    const dateRegex = /\b(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/;
+    const dateRegex = /\b(\d{4}[-/]\d{1,2}[-/]\d{1,2}|d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/;
     const dateMatch = text.match(dateRegex);
     if (dateMatch) {
         const rawDate = dateMatch[1];
@@ -199,581 +177,270 @@ function parsePdfTextHeuristically(text) {
     };
 }
 
-// 1. Get all items with receipts (with optional pagination, search, and status tab filtering support)
+// 1. Get all items with receipts (with SQL pagination, search, status, and category filtering)
 app.get('/api/items', (req, res) => {
-    const page = parseInt(req.query.page) || null;
-    const limit = parseInt(req.query.limit) || null;
-    const skip = page && limit ? (page - 1) * limit : 0;
-    const search = req.query.search || null;
-    const filter = req.query.filter || null;
-    const startDate = req.query.startDate || null;
-    const endDate = req.query.endDate || null;
-    const vehicle = req.query.vehicle || null;
-    const sort = req.query.sort || 'reqDate';
-    const order = req.query.order || 'desc';
-
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-# Get Items
-$cmdItems = $conn.CreateCommand()
-$cmdItems.CommandText = "SELECT * FROM items"
-$readerItems = $cmdItems.ExecuteReader()
-$items = @()
-while ($readerItems.Read()) {
-    $item = @{
-        id = $readerItems["id"]
-        mrnNum = $readerItems["mrnNum"]
-        reqDate = $readerItems["reqDate"]
-        vehicleMachinery = $readerItems["vehicleMachinery"]
-        itemName = $readerItems["itemName"]
-        itemDesc = $readerItems["itemDesc"]
-        reqQty = $readerItems["reqQty"]
-    }
-    $items += $item
-}
-$readerItems.Close()
-
-# Get Receipts
-$cmdReceipts = $conn.CreateCommand()
-$cmdReceipts.CommandText = "SELECT * FROM receipts"
-$readerReceipts = $cmdReceipts.ExecuteReader()
-$receipts = @()
-while ($readerReceipts.Read()) {
-    $receipt = @{
-        id = $readerReceipts["id"]
-        itemId = $readerReceipts["itemId"]
-        qty = $readerReceipts["qty"]
-        transactionType = $readerReceipts["transactionType"]
-        deliveryDate = $readerReceipts["deliveryDate"]
-        purchaseSource = $readerReceipts["purchaseSource"]
-        grnNumber = $readerReceipts["grnNumber"]
-        invoiceNumber = $readerReceipts["invoiceNumber"]
-        invoiceDate = $readerReceipts["invoiceDate"]
-        supplierName = $readerReceipts["supplierName"]
-        unitPrice = $readerReceipts["unitPrice"]
-    }
-    $receipts += $receipt
-}
-$readerReceipts.Close()
-$conn.Close()
-
-# Map receipts to items temporarily in PowerShell to calculate recQty
-foreach ($item in $items) {
-    $itemRecs = @()
-    if ($null -ne $receipts) {
-        foreach ($r in $receipts) {
-            if ($r.itemId -eq $item.id) {
-                $itemRecs += $r
-            }
-        }
-    }
-    
-    # Calculate recQty
-    $recQty = 0.0
-    foreach ($r in $itemRecs) {
-        $recQty += $r.qty
-    }
-    $item.recQty = $recQty
-    $item.hasReceipts = $itemRecs.Count -gt 0
-    
-    # Check if pending pricing
-    $isPendingPricing = $false
-    if ($itemRecs.Count -gt 0) {
-        foreach ($r in $itemRecs) {
-            if ($null -eq $r.unitPrice -or $r.unitPrice -eq 0 -or $null -eq $r.invoiceNumber -or $r.invoiceNumber -eq "") {
-                $isPendingPricing = $true
-            }
-        }
-    }
-    $item.isPendingPricing = $isPendingPricing
-}
-
-# Filter by search if provided
-if ($null -ne $params.search -and $params.search -ne "") {
-    $searchLower = $params.search.ToLower()
-    $filtered = @()
-    foreach ($item in $items) {
-        $match = $false
-        if ($null -ne $item.mrnNum -and $item.mrnNum.ToLower().Contains($searchLower)) { $match = $true }
-        elseif ($null -ne $item.itemName -and $item.itemName.ToLower().Contains($searchLower)) { $match = $true }
-        elseif ($null -ne $item.vehicleMachinery -and $item.vehicleMachinery.ToLower().Contains($searchLower)) { $match = $true }
-        elseif ($null -ne $item.itemDesc -and $item.itemDesc.ToLower().Contains($searchLower)) { $match = $true }
-        else {
-            # Check receipts fields
-            if ($null -ne $receipts) {
-                foreach ($r in $receipts) {
-                    if ($r.itemId -eq $item.id) {
-                        if ($null -ne $r.grnNumber -and $r.grnNumber.ToLower().Contains($searchLower)) { $match = $true; break }
-                        if ($null -ne $r.invoiceNumber -and $r.invoiceNumber.ToLower().Contains($searchLower)) { $match = $true; break }
-                        if ($null -ne $r.supplierName -and $r.supplierName.ToLower().Contains($searchLower)) { $match = $true; break }
-                    }
-                }
-            }
-        }
-        if ($match) { $filtered += $item }
-    }
-    $items = $filtered
-}
-
-# Filter by tab if provided
-if ($null -ne $params.filter -and $params.filter -ne "" -and $params.filter -ne "all") {
-    $filtered = @()
-    foreach ($item in $items) {
-        $isPendingDelivery = $item.reqQty -gt $item.recQty
-        $isPendingPricing = $item.isPendingPricing
-        $isCompleted = -not $isPendingDelivery -and -not $isPendingPricing
-        
-        $keep = $false
-        if ($params.filter -eq "pending-delivery" -and $isPendingDelivery) { $keep = $true }
-        elseif ($params.filter -eq "pending-pricing" -and (-not $isPendingDelivery) -and $isPendingPricing) { $keep = $true }
-        elseif ($params.filter -eq "completed" -and $isCompleted) { $keep = $true }
-        
-        if ($keep) { $filtered += $item }
-    }
-    $items = $filtered
-}
-
-# Date parsing helper inside PowerShell
-function Parse-MyDate($dateStr) {
-    if ([string]::IsNullOrEmpty($dateStr)) { return [DateTime]::MinValue }
-    $parsed = [DateTime]::MinValue
-    if ($dateStr.Contains("-")) {
-        $parts = $dateStr.Split("-")
-        if ($parts.Length -eq 3 -and $parts[0].Length -eq 4) {
-            try { return New-Object DateTime ([int]$parts[0]), ([int]$parts[1]), ([int]$parts[2]) } catch {}
-        }
-    }
-    if ($dateStr.Contains("/")) {
-        $parts = $dateStr.Split("/")
-        if ($parts.Length -eq 3) {
-            try { return New-Object DateTime ([int]$parts[2]), ([int]$parts[0]), ([int]$parts[1]) } catch {}
-            try { return New-Object DateTime ([int]$parts[2]), ([int]$parts[1]), ([int]$parts[0]) } catch {}
-        }
-    }
-    if ([DateTime]::TryParse($dateStr, [ref]$parsed)) {
-        return $parsed
-    }
-    return [DateTime]::MinValue
-}
-
-# Filter by date range if provided
-if ($null -ne $params.startDate -and $params.startDate -ne "") {
-    $startD = Parse-MyDate $params.startDate
-    if ($startD -ne [DateTime]::MinValue) {
-        $filtered = @()
-        foreach ($item in $items) {
-            $itemD = Parse-MyDate $item.reqDate
-            if ($itemD -ne [DateTime]::MinValue -and $itemD -ge $startD) {
-                $filtered += $item
-            }
-        }
-        $items = $filtered
-    }
-}
-
-if ($null -ne $params.endDate -and $params.endDate -ne "") {
-    $endD = Parse-MyDate $params.endDate
-    if ($endD -ne [DateTime]::MinValue) {
-        $filtered = @()
-        foreach ($item in $items) {
-            $itemD = Parse-MyDate $item.reqDate
-            if ($itemD -ne [DateTime]::MinValue -and $itemD -le $endD) {
-                $filtered += $item
-            }
-        }
-        $items = $filtered
-    }
-}
-
-# Filter by vehicle number if provided
-if ($null -ne $params.vehicle -and $params.vehicle -ne "" -and $params.vehicle -ne "all") {
-    $vehicleLower = $params.vehicle.ToLower().Trim()
-    $filtered = @()
-    foreach ($item in $items) {
-        if ($null -ne $item.vehicleMachinery -and $item.vehicleMachinery.ToLower().Trim() -eq $vehicleLower) {
-            $filtered += $item
-        }
-    }
-    $items = $filtered
-}
-
-# Sort items before slicing
-$desc = $params.order -eq "desc"
-if ($params.sort -eq "mrnNum") {
-    if ($desc) { $items = $items | Sort-Object @{Expression={$_.mrnNum}; Descending=$true} }
-    else { $items = $items | Sort-Object @{Expression={$_.mrnNum}} }
-} elseif ($params.sort -eq "itemName") {
-    if ($desc) { $items = $items | Sort-Object @{Expression={$_.itemName}; Descending=$true} }
-    else { $items = $items | Sort-Object @{Expression={$_.itemName}} }
-} elseif ($params.sort -eq "vehicleMachinery") {
-    if ($desc) { $items = $items | Sort-Object @{Expression={$_.vehicleMachinery}; Descending=$true} }
-    else { $items = $items | Sort-Object @{Expression={$_.vehicleMachinery}} }
-} elseif ($params.sort -eq "reqQty") {
-    if ($desc) { $items = $items | Sort-Object @{Expression={[double]$_.reqQty}; Descending=$true} }
-    else { $items = $items | Sort-Object @{Expression={[double]$_.reqQty}} }
-} elseif ($params.sort -eq "recQty") {
-    if ($desc) { $items = $items | Sort-Object @{Expression={[double]$_.recQty}; Descending=$true} }
-    else { $items = $items | Sort-Object @{Expression={[double]$_.recQty}} }
-} elseif ($params.sort -eq "gap") {
-    if ($desc) { $items = $items | Sort-Object @{Expression={[double]($_.reqQty - $_.recQty)}; Descending=$true} }
-    else { $items = $items | Sort-Object @{Expression={[double]($_.reqQty - $_.recQty)}} }
-} else {
-    # Default is sorted by reqDate
-    if ($desc) { $items = $items | Sort-Object @{Expression={Parse-MyDate $_.reqDate}; Descending=$true} }
-    else { $items = $items | Sort-Object @{Expression={Parse-MyDate $_.reqDate}} }
-}
-
-$total = $items.Count
-
-# Slice in PowerShell if pagination is requested
-if ($null -ne $params.limit -and $params.limit -gt 0) {
-    $items = $items | Select-Object -Skip $params.skip -First $params.limit
-}
-
-@{ items = $items; receipts = $receipts; total = $total } | ConvertTo-Json -Depth 5 -Compress
-    `;
-
     try {
-        const inputData = { skip, limit, search, filter, startDate, endDate, vehicle, sort, order };
-        const data = runDbQuery(psScript, inputData);
-        const { items, receipts, total } = data;
+        const page = parseInt(req.query.page) || null;
+        const limit = parseInt(req.query.limit) || null;
+        const skip = page && limit ? (page - 1) * limit : 0;
         
-        // Group receipts by itemId in O(N) using JS
-        const receiptsByItem = {};
-        if (receipts && Array.isArray(receipts)) {
+        const search = req.query.search || null;
+        const filter = req.query.filter || null;
+        const startDate = req.query.startDate || null;
+        const endDate = req.query.endDate || null;
+        const vehicle = req.query.vehicle || null;
+        const category = req.query.category || null;
+        const sort = req.query.sort || 'reqDate';
+        const order = req.query.order || 'desc';
+
+        // Base query
+        let baseQuery = `
+            SELECT 
+                i.id,
+                i.mrnNum,
+                i.reqDate,
+                i.vehicleMachinery,
+                i.itemName,
+                i.itemDesc,
+                i.reqQty,
+                i.category,
+                COALESCE(SUM(r.qty), 0.0) as recQty,
+                CASE WHEN COUNT(r.id) > 0 THEN 1 ELSE 0 END as hasReceipts,
+                CASE WHEN COUNT(r.id) > 0 AND SUM(CASE WHEN r.unitPrice = 0 OR r.unitPrice IS NULL OR r.invoiceNumber = '' OR r.invoiceNumber IS NULL THEN 1 ELSE 0 END) > 0 THEN 1 ELSE 0 END as isPendingPricing
+            FROM items i
+            LEFT JOIN receipts r ON i.id = r.itemId
+        `;
+
+        const whereClauses = [];
+        const queryParams = [];
+
+        if (search) {
+            whereClauses.push(`(i.mrnNum LIKE ? OR i.itemName LIKE ? OR i.vehicleMachinery LIKE ? OR i.itemDesc LIKE ? OR i.category LIKE ? OR r.grnNumber LIKE ? OR r.invoiceNumber LIKE ? OR r.supplierName LIKE ?)`);
+            const s = `%${search}%`;
+            queryParams.push(s, s, s, s, s, s, s, s);
+        }
+
+        if (category && category !== 'all') {
+            whereClauses.push(`i.category = ?`);
+            queryParams.push(category);
+        }
+
+        if (vehicle && vehicle !== 'all') {
+            whereClauses.push(`LOWER(TRIM(i.vehicleMachinery)) = LOWER(TRIM(?))`);
+            queryParams.push(vehicle);
+        }
+
+        if (startDate) {
+            whereClauses.push(`i.reqDate >= ?`);
+            queryParams.push(startDate);
+        }
+
+        if (endDate) {
+            whereClauses.push(`i.reqDate <= ?`);
+            queryParams.push(endDate);
+        }
+
+        if (whereClauses.length > 0) {
+            baseQuery += ` WHERE ` + whereClauses.join(' AND ');
+        }
+
+        baseQuery += ` GROUP BY i.id `;
+
+        const havingClauses = [];
+        if (filter === 'pending-delivery') {
+            havingClauses.push(`i.reqQty > COALESCE(SUM(r.qty), 0.0)`);
+        } else if (filter === 'pending-pricing') {
+            havingClauses.push(`i.reqQty <= COALESCE(SUM(r.qty), 0.0)`);
+            havingClauses.push(`SUM(CASE WHEN r.unitPrice = 0 OR r.unitPrice IS NULL OR r.invoiceNumber = '' OR r.invoiceNumber IS NULL THEN 1 ELSE 0 END) > 0`);
+        } else if (filter === 'completed') {
+            havingClauses.push(`i.reqQty <= COALESCE(SUM(r.qty), 0.0)`);
+            havingClauses.push(`(COUNT(r.id) = 0 OR SUM(CASE WHEN r.unitPrice = 0 OR r.unitPrice IS NULL OR r.invoiceNumber = '' OR r.invoiceNumber IS NULL THEN 1 ELSE 0 END) = 0)`);
+        }
+
+        if (havingClauses.length > 0) {
+            baseQuery += ` HAVING ` + havingClauses.join(' AND ');
+        }
+
+        // Sorting
+        const allowedSortCols = {
+            mrnNum: 'i.mrnNum',
+            itemName: 'i.itemName',
+            vehicleMachinery: 'i.vehicleMachinery',
+            reqQty: 'i.reqQty',
+            recQty: 'recQty',
+            gap: '(i.reqQty - COALESCE(SUM(r.qty), 0.0))',
+            reqDate: 'i.reqDate',
+            category: 'i.category'
+        };
+
+        const sortCol = allowedSortCols[sort] || 'i.reqDate';
+        const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
+        baseQuery += ` ORDER BY ${sortCol} ${sortOrder} `;
+
+        // Count Query for Pagination
+        const countQuery = `SELECT COUNT(*) as count FROM (${baseQuery})`;
+        const totalResult = db.queryGet(countQuery, queryParams);
+        const total = totalResult ? totalResult.count : 0;
+
+        // Apply pagination
+        let itemsQuery = baseQuery;
+        const itemsParams = [...queryParams];
+        if (page && limit) {
+            itemsQuery += ` LIMIT ? OFFSET ? `;
+            itemsParams.push(limit, skip);
+        }
+
+        const items = db.queryAll(itemsQuery, itemsParams);
+
+        // Fetch receipts for the returned items
+        if (items.length > 0) {
+            const itemIds = items.map(item => item.id);
+            const placeholders = itemIds.map(() => '?').join(',');
+            const receipts = db.queryAll(`SELECT * FROM receipts WHERE itemId IN (${placeholders})`, itemIds);
+            
+            const receiptsByItem = {};
             for (let r of receipts) {
                 if (!receiptsByItem[r.itemId]) receiptsByItem[r.itemId] = [];
                 receiptsByItem[r.itemId].push(r);
             }
-        }
-        
-        function parseDate(dateStr) {
-            if (!dateStr) return new Date(0);
-            const str = String(dateStr);
-            if (str.includes('-')) {
-                const parts = str.split('-');
-                if (parts.length === 3 && parts[0].length === 4) {
-                    return new Date(parts[0], parts[1] - 1, parts[2]);
-                }
-            }
-            if (str.includes('/')) {
-                const parts = str.split('/');
-                if (parts.length === 3) {
-                    const month = parseInt(parts[0], 10);
-                    const day = parseInt(parts[1], 10);
-                    const year = parseInt(parts[2], 10);
-                    return new Date(year, month - 1, day);
-                }
-            }
-            const parsed = new Date(str);
-            return isNaN(parsed.getTime()) ? new Date(0) : parsed;
-        }
 
-        if (items && Array.isArray(items)) {
             for (let item of items) {
                 item.receipts = receiptsByItem[item.id] || [];
+                item.name = item.itemName; // Frontend mapping compat
             }
         }
-        
+
         if (page && limit) {
             res.json({
-                items: items || [],
-                total: total || 0,
+                items: items,
+                total: total,
                 page,
                 limit,
-                totalPages: total && limit ? Math.ceil(total / limit) : 1
+                totalPages: Math.ceil(total / limit) || 1
             });
         } else {
-            res.json(items || []);
+            res.json(items);
         }
     } catch (e) {
+        console.error('API /api/items error:', e);
         res.status(500).json({ error: e.message });
     }
 });
 
-// 2. Add new item (fully parameterized)
+// 2. Add new item
 app.post('/api/items', (req, res) => {
-    const { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty } = req.body;
-    
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-$cmd = $conn.CreateCommand()
-$cmd.CommandText = "INSERT INTO items (mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty) VALUES (?, ?, ?, ?, ?, ?)"
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.mrnNum) { [string]$params.mrnNum } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.reqDate) { [string]$params.reqDate } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.vehicleMachinery) { [string]$params.vehicleMachinery } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.itemName) { [string]$params.itemName } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.itemDesc) { [string]$params.itemDesc } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.reqQty) { [double]$params.reqQty } else { 0.0 })) | Out-Null
-$cmd.ExecuteNonQuery() | Out-Null
-
-$cmd.CommandText = "SELECT @@IDENTITY"
-$newId = $cmd.ExecuteScalar()
-
-$conn.Close()
-@{ id = $newId } | ConvertTo-Json -Compress
-    `;
-
     try {
-        const inputData = { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty };
-        const result = runDbQuery(psScript, inputData);
-        res.json({ success: true, id: result.id });
+        const { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty, category } = req.body;
+        const cat = category || classifyItem(itemName);
+        
+        const result = db.run(
+            'INSERT INTO items (mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [mrnNum || '', reqDate || '', vehicleMachinery || '', itemName || '', itemDesc || '', reqQty || 0, cat]
+        );
+        res.json({ success: true, id: result.lastInsertRowid });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// 3. Delete item (fully parameterized)
+// 3. Delete item
 app.delete('/api/items/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-# Delete receipts first (FK)
-$cmd = $conn.CreateCommand()
-$cmd.CommandText = "DELETE FROM receipts WHERE itemId = ?"
-$cmd.Parameters.AddWithValue("?", [int]$params.id) | Out-Null
-$cmd.ExecuteNonQuery() | Out-Null
-
-# Delete item
-$cmd.CommandText = "DELETE FROM items WHERE id = ?"
-$cmd.Parameters.AddWithValue("?", [int]$params.id) | Out-Null
-$cmd.ExecuteNonQuery() | Out-Null
-
-$conn.Close()
-@{ success = $true } | ConvertTo-Json -Compress
-    `;
-
     try {
-        runDbQuery(psScript, { id });
+        const id = parseInt(req.params.id);
+        db.run('DELETE FROM items WHERE id = ?', [id]);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// 4. Add receipt (fully parameterized)
+// 4. Add receipt
 app.post('/api/items/:id/receipts', (req, res) => {
-    const itemId = parseInt(req.params.id);
-    const { qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice } = req.body;
-    
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-$cmd = $conn.CreateCommand()
-$cmd.CommandText = "INSERT INTO receipts (itemId, qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-$cmd.Parameters.AddWithValue("?", [int]$params.itemId) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.qty) { [double]$params.qty } else { 0.0 })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.transactionType) { [string]$params.transactionType } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.deliveryDate) { [string]$params.deliveryDate } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.purchaseSource) { [string]$params.purchaseSource } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.grnNumber) { [string]$params.grnNumber } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.invoiceNumber) { [string]$params.invoiceNumber } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.invoiceDate) { [string]$params.invoiceDate } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.supplierName) { [string]$params.supplierName } else { "" })) | Out-Null
-
-if ($null -ne $params.unitPrice -and "" -ne $params.unitPrice) {
-    $cmd.Parameters.AddWithValue("?", [double]$params.unitPrice) | Out-Null
-} else {
-    $cmd.Parameters.AddWithValue("?", [System.DBNull]::Value) | Out-Null
-}
-
-$cmd.ExecuteNonQuery() | Out-Null
-
-$cmd.CommandText = "SELECT @@IDENTITY"
-$newId = $cmd.ExecuteScalar()
-
-$conn.Close()
-@{ id = $newId } | ConvertTo-Json -Compress
-    `;
-
     try {
-        const inputData = { itemId, qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice };
-        const result = runDbQuery(psScript, inputData);
-        res.json({ success: true, id: result.id });
+        const itemId = parseInt(req.params.id);
+        const { qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice } = req.body;
+        
+        const result = db.run(
+            'INSERT INTO receipts (itemId, qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [itemId, qty || 0, transactionType || 'Receive', deliveryDate || '', purchaseSource || '', grnNumber || '', invoiceNumber || '', invoiceDate || '', supplierName || '', unitPrice ? parseFloat(unitPrice) : null]
+        );
+        res.json({ success: true, id: result.lastInsertRowid });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// 5. Delete receipt (fully parameterized)
+// 5. Delete receipt
 app.delete('/api/receipts/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-$cmd = $conn.CreateCommand()
-$cmd.CommandText = "DELETE FROM receipts WHERE id = ?"
-$cmd.Parameters.AddWithValue("?", [int]$params.id) | Out-Null
-$cmd.ExecuteNonQuery() | Out-Null
-
-$conn.Close()
-@{ success = $true } | ConvertTo-Json -Compress
-    `;
-
     try {
-        runDbQuery(psScript, { id });
+        const id = parseInt(req.params.id);
+        db.run('DELETE FROM receipts WHERE id = ?', [id]);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// 5.5 Update item (fully parameterized)
+// 5.5 Update item
 app.put('/api/items/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty } = req.body;
-    
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-$cmd = $conn.CreateCommand()
-$cmd.CommandText = "UPDATE items SET mrnNum = ?, reqDate = ?, vehicleMachinery = ?, itemName = ?, itemDesc = ?, reqQty = ? WHERE id = ?"
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.mrnNum) { [string]$params.mrnNum } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.reqDate) { [string]$params.reqDate } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.vehicleMachinery) { [string]$params.vehicleMachinery } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.itemName) { [string]$params.itemName } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.itemDesc) { [string]$params.itemDesc } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.reqQty) { [double]$params.reqQty } else { 0.0 })) | Out-Null
-$cmd.Parameters.AddWithValue("?", [int]$params.id) | Out-Null
-$cmd.ExecuteNonQuery() | Out-Null
-
-$conn.Close()
-@{ success = $true } | ConvertTo-Json -Compress
-    `;
-
     try {
-        const inputData = { id, mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty };
-        runDbQuery(psScript, inputData);
+        const id = parseInt(req.params.id);
+        const { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty, category } = req.body;
+        const cat = category || classifyItem(itemName);
+        
+        db.run(
+            'UPDATE items SET mrnNum = ?, reqDate = ?, vehicleMachinery = ?, itemName = ?, itemDesc = ?, reqQty = ?, category = ? WHERE id = ?',
+            [mrnNum || '', reqDate || '', vehicleMachinery || '', itemName || '', itemDesc || '', reqQty || 0, cat, id]
+        );
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// 5.6 Update receipt details & pricing (fully parameterized)
+// 5.6 Update receipt details & pricing
 app.put('/api/receipts/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const { qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice } = req.body;
-    
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-$cmd = $conn.CreateCommand()
-$cmd.CommandText = "UPDATE receipts SET qty = ?, transactionType = ?, deliveryDate = ?, purchaseSource = ?, grnNumber = ?, invoiceNumber = ?, invoiceDate = ?, supplierName = ?, unitPrice = ? WHERE id = ?"
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.qty) { [double]$params.qty } else { 0.0 })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.transactionType) { [string]$params.transactionType } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.deliveryDate) { [string]$params.deliveryDate } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.purchaseSource) { [string]$params.purchaseSource } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.grnNumber) { [string]$params.grnNumber } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.invoiceNumber) { [string]$params.invoiceNumber } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.invoiceDate) { [string]$params.invoiceDate } else { "" })) | Out-Null
-$cmd.Parameters.AddWithValue("?", $(if ($null -ne $params.supplierName) { [string]$params.supplierName } else { "" })) | Out-Null
-
-if ($null -ne $params.unitPrice -and "" -ne $params.unitPrice) {
-    $cmd.Parameters.AddWithValue("?", [double]$params.unitPrice) | Out-Null
-} else {
-    $cmd.Parameters.AddWithValue("?", [System.DBNull]::Value) | Out-Null
-}
-
-$cmd.Parameters.AddWithValue("?", [int]$params.id) | Out-Null
-$cmd.ExecuteNonQuery() | Out-Null
-
-$conn.Close()
-@{ success = $true } | ConvertTo-Json -Compress
-    `;
-
     try {
-        const inputData = { id, qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice };
-        runDbQuery(psScript, inputData);
+        const id = parseInt(req.params.id);
+        const { qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice } = req.body;
+        
+        db.run(
+            'UPDATE receipts SET qty = ?, transactionType = ?, deliveryDate = ?, purchaseSource = ?, grnNumber = ?, invoiceNumber = ?, invoiceDate = ?, supplierName = ?, unitPrice = ? WHERE id = ?',
+            [qty || 0, transactionType || 'Receive', deliveryDate || '', purchaseSource || '', grnNumber || '', invoiceNumber || '', invoiceDate || '', supplierName || '', unitPrice ? parseFloat(unitPrice) : null, id]
+        );
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// 6. Import Data (fully parameterized bulk importer)
+// 6. Import Data (bulk importer)
 app.post('/api/import', (req, res) => {
     const data = req.body;
     if (!Array.isArray(data)) {
         return res.status(400).json({ error: "Data must be an array of items" });
     }
     
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-foreach ($item in $params) {
-    $cmd = $conn.CreateCommand()
-    $cmd.CommandText = "INSERT INTO items (mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty) VALUES (?, ?, ?, ?, ?, ?)"
-    $cmd.Parameters.AddWithValue("?", $(if ($null -ne $item.mrnNum) { [string]$item.mrnNum } else { "" })) | Out-Null
-    $cmd.Parameters.AddWithValue("?", $(if ($null -ne $item.reqDate) { [string]$item.reqDate } else { "" })) | Out-Null
-    $cmd.Parameters.AddWithValue("?", $(if ($null -ne $item.vehicleMachinery) { [string]$item.vehicleMachinery } else { "" })) | Out-Null
-    $cmd.Parameters.AddWithValue("?", $(if ($null -ne $item.itemName) { [string]$item.itemName } else { "" })) | Out-Null
-    $cmd.Parameters.AddWithValue("?", $(if ($null -ne $item.itemDesc) { [string]$item.itemDesc } else { "" })) | Out-Null
-    $cmd.Parameters.AddWithValue("?", $(if ($null -ne $item.reqQty) { [double]$item.reqQty } else { 0.0 })) | Out-Null
-    $cmd.ExecuteNonQuery() | Out-Null
-    
-    $cmd.CommandText = "SELECT @@IDENTITY"
-    $itemId = $cmd.ExecuteScalar()
-    
-    if ($null -ne $item.receipts) {
-        foreach ($r in $item.receipts) {
-            $cmdR = $conn.CreateCommand()
-            $cmdR.CommandText = "INSERT INTO receipts (itemId, qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            $cmdR.Parameters.AddWithValue("?", [int]$itemId) | Out-Null
-            $cmdR.Parameters.AddWithValue("?", $(if ($null -ne $r.qty) { [double]$r.qty } else { 0.0 })) | Out-Null
-            $cmdR.Parameters.AddWithValue("?", $(if ($null -ne $r.transactionType) { [string]$r.transactionType } else { "" })) | Out-Null
-            $cmdR.Parameters.AddWithValue("?", $(if ($null -ne $r.deliveryDate) { [string]$r.deliveryDate } else { "" })) | Out-Null
-            $cmdR.Parameters.AddWithValue("?", $(if ($null -ne $r.purchaseSource) { [string]$r.purchaseSource } else { "" })) | Out-Null
-            $cmdR.Parameters.AddWithValue("?", $(if ($null -ne $r.grnNumber) { [string]$r.grnNumber } else { "" })) | Out-Null
-            $cmdR.Parameters.AddWithValue("?", $(if ($null -ne $r.invoiceNumber) { [string]$r.invoiceNumber } else { "" })) | Out-Null
-            $cmdR.Parameters.AddWithValue("?", $(if ($null -ne $r.invoiceDate) { [string]$r.invoiceDate } else { "" })) | Out-Null
-            $cmdR.Parameters.AddWithValue("?", $(if ($null -ne $r.supplierName) { [string]$r.supplierName } else { "" })) | Out-Null
-            
-            if ($null -ne $r.unitPrice -and "" -ne $r.unitPrice) {
-                $cmdR.Parameters.AddWithValue("?", [double]$r.unitPrice) | Out-Null
-            } else {
-                $cmdR.Parameters.AddWithValue("?", [System.DBNull]::Value) | Out-Null
-            }
-            $cmdR.ExecuteNonQuery() | Out-Null
-        }
-    }
-}
-
-$conn.Close()
-@{ success = $true } | ConvertTo-Json -Compress
-    `;
-
     try {
-        runDbQuery(psScript, data);
+        db.transaction(() => {
+            for (let item of data) {
+                const cat = item.category || classifyItem(item.itemName || item.name);
+                const result = db.run(
+                    'INSERT INTO items (mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [item.mrnNum || '', item.reqDate || '', item.vehicleMachinery || '', item.itemName || item.name || '', item.itemDesc || '', item.reqQty || 0, cat]
+                );
+                const itemId = result.lastInsertRowid;
+                
+                if (item.receipts && Array.isArray(item.receipts)) {
+                    for (let r of item.receipts) {
+                        db.run(
+                            'INSERT INTO receipts (itemId, qty, transactionType, deliveryDate, purchaseSource, grnNumber, invoiceNumber, invoiceDate, supplierName, unitPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                            [itemId, r.qty || 0, r.transactionType || r.type || 'Receive', r.deliveryDate || r.date || '', r.purchaseSource || r.source || '', r.grnNumber || '', r.invoiceNumber || '', r.invoiceDate || '', r.supplierName || '', r.unitPrice ? parseFloat(r.unitPrice) : null]
+                        );
+                    }
+                }
+            }
+        });
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -782,76 +449,23 @@ $conn.Close()
 
 // 7. Premium multi-sheet Excel Export Endpoint
 app.get('/api/export/excel', (req, res) => {
-    const psScript = `
-$dbPath = '${DB_PATH.replace(/'/g, "''")}'
-$conn = New-Object System.Data.OleDb.OleDbConnection
-$conn.ConnectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=$dbPath;"
-$conn.Open()
-
-# Get Items
-$cmdItems = $conn.CreateCommand()
-$cmdItems.CommandText = "SELECT * FROM items"
-$readerItems = $cmdItems.ExecuteReader()
-$items = @()
-while ($readerItems.Read()) {
-    $item = @{
-        id = $readerItems["id"]
-        mrnNum = $readerItems["mrnNum"]
-        reqDate = $readerItems["reqDate"]
-        vehicleMachinery = $readerItems["vehicleMachinery"]
-        itemName = $readerItems["itemName"]
-        itemDesc = $readerItems["itemDesc"]
-        reqQty = $readerItems["reqQty"]
-    }
-    $items += $item
-}
-$readerItems.Close()
-
-# Get Receipts
-$cmdReceipts = $conn.CreateCommand()
-$cmdReceipts.CommandText = "SELECT * FROM receipts"
-$readerReceipts = $cmdReceipts.ExecuteReader()
-$receipts = @()
-while ($readerReceipts.Read()) {
-    $receipt = @{
-        id = $readerReceipts["id"]
-        itemId = $readerReceipts["itemId"]
-        qty = $readerReceipts["qty"]
-        transactionType = $readerReceipts["transactionType"]
-        deliveryDate = $readerReceipts["deliveryDate"]
-        purchaseSource = $readerReceipts["purchaseSource"]
-        grnNumber = $readerReceipts["grnNumber"]
-        invoiceNumber = $readerReceipts["invoiceNumber"]
-        invoiceDate = $readerReceipts["invoiceDate"]
-        supplierName = $readerReceipts["supplierName"]
-        unitPrice = $readerReceipts["unitPrice"]
-    }
-    $receipts += $receipt
-}
-$readerReceipts.Close()
-$conn.Close()
-
-@{ items = $items; receipts = $receipts } | ConvertTo-Json -Depth 5 -Compress
-    `;
-
     try {
-        const data = runDbQuery(psScript);
-        const { items, receipts } = data;
+        const items = db.queryAll('SELECT * FROM items');
+        const receipts = db.queryAll('SELECT * FROM receipts');
+        const issues = db.queryAll('SELECT * FROM issues');
         
         const receiptsByItem = {};
-        if (receipts && Array.isArray(receipts)) {
-            for (let r of receipts) {
-                if (!receiptsByItem[r.itemId]) receiptsByItem[r.itemId] = [];
-                receiptsByItem[r.itemId].push(r);
-            }
+        for (let r of receipts) {
+            if (!receiptsByItem[r.itemId]) receiptsByItem[r.itemId] = [];
+            receiptsByItem[r.itemId].push(r);
         }
 
         const wb = XLSX.utils.book_new();
 
-        // Build main sheet data
+        // 1. Build main sheet data
         const itemsSheetData = [];
         itemsSheetData.push([
-            "MRN Number", "Request Date", "Vehicle/Machinery", "Item Name", "Item Description", 
+            "MRN Number", "Request Date", "Vehicle/Machinery", "Item Name", "Item Description", "Category",
             "Requested Qty", "Received Qty", "Receive Date", "Purchase Source", "Qty Gap", 
             "Date Gap (Days)", "Status", "GRN Number", "Invoice Number", "Invoice Date", 
             "Supplier Name", "Unit Price (Rs.)", "Total Price (Rs.)"
@@ -863,94 +477,93 @@ $conn.Close()
         let pricedCount = 0;
         let unpricedCount = 0;
 
-        if (items && Array.isArray(items)) {
-            for (let item of items) {
-                item.receipts = receiptsByItem[item.id] || [];
-                const recQty = item.receipts.reduce((sum, r) => sum + r.qty, 0);
-                const recQtyRounded = Math.round(recQty * 100) / 100;
-                
-                let recDate = "";
-                if (item.receipts.length > 0) {
-                    const sorted = [...item.receipts].sort((a, b) => new Date(b.deliveryDate) - new Date(a.deliveryDate));
-                    recDate = sorted[0].deliveryDate;
-                }
-                
-                const uniqueSources = [...new Set(item.receipts.map(r => r.purchaseSource).filter(Boolean))].join(' & ');
-                const qtyGap = Math.round((item.reqQty - recQtyRounded) * 100) / 100;
-                
-                let dateGapDays = "";
-                if (recDate) {
-                    const d1 = new Date(item.reqDate);
-                    const d2 = new Date(recDate);
-                    dateGapDays = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
-                }
-
-                let status = "Pending";
-                if (recQtyRounded > 0) {
-                    if (recQtyRounded < item.reqQty) status = "Partial";
-                    else if (recQtyRounded === item.reqQty) status = "Complete";
-                    else status = "Over-received";
-                }
-
-                const grns = [...new Set(item.receipts.map(r => r.grnNumber).filter(Boolean))].join('; ');
-                const invoices = [...new Set(item.receipts.map(r => r.invoiceNumber).filter(Boolean))].join('; ');
-                const invoiceDates = [...new Set(item.receipts.map(r => r.invoiceDate).filter(Boolean))].filter(d => d && d !== '1899-12-30').join('; ');
-                const suppliers = [...new Set(item.receipts.map(r => r.supplierName).filter(Boolean))].join('; ');
-                
-                let totalUnitPrice = "";
-                let totalPrice = 0;
-                let hasPricing = false;
-
-                const pricedReceipts = item.receipts.filter(r => r.unitPrice);
-                if (pricedReceipts.length > 0) {
-                    totalUnitPrice = pricedReceipts.map(r => r.unitPrice).join('; ');
-                    totalPrice = item.receipts.reduce((sum, r) => {
-                        if (r.unitPrice && r.qty > 0) {
-                            const cost = Math.abs(r.qty) * r.unitPrice;
-                            totalSpend += cost;
-                            const sup = r.supplierName || 'Unknown Supplier';
-                            supplierSpend[sup] = (supplierSpend[sup] || 0) + cost;
-                            activeSuppliers.add(sup);
-                            return sum + cost;
-                        }
-                        return sum;
-                    }, 0);
-                    totalPrice = Math.round(totalPrice * 100) / 100;
-                    hasPricing = true;
-                }
-
-                if (recQtyRounded > 0) {
-                    if (hasPricing) pricedCount++;
-                    else unpricedCount++;
-                }
-
-                itemsSheetData.push([
-                    item.mrnNum || "",
-                    item.reqDate || "",
-                    item.vehicleMachinery || "",
-                    item.itemName || "",
-                    item.itemDesc || "",
-                    item.reqQty || 0,
-                    recQtyRounded,
-                    recDate,
-                    uniqueSources,
-                    qtyGap,
-                    dateGapDays,
-                    status,
-                    grns,
-                    invoices,
-                    invoiceDates,
-                    suppliers,
-                    totalUnitPrice,
-                    totalPrice || ""
-                ]);
+        for (let item of items) {
+            const itemRecs = receiptsByItem[item.id] || [];
+            const recQty = itemRecs.reduce((sum, r) => sum + r.qty, 0);
+            const recQtyRounded = Math.round(recQty * 100) / 100;
+            
+            let recDate = "";
+            if (itemRecs.length > 0) {
+                const sorted = [...itemRecs].sort((a, b) => new Date(b.deliveryDate) - new Date(a.deliveryDate));
+                recDate = sorted[0].deliveryDate;
             }
+            
+            const uniqueSources = [...new Set(itemRecs.map(r => r.purchaseSource).filter(Boolean))].join(' & ');
+            const qtyGap = Math.round((item.reqQty - recQtyRounded) * 100) / 100;
+            
+            let dateGapDays = "";
+            if (recDate && item.reqDate) {
+                const d1 = new Date(item.reqDate);
+                const d2 = new Date(recDate);
+                dateGapDays = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+            }
+
+            let status = "Pending";
+            if (recQtyRounded > 0) {
+                if (recQtyRounded < item.reqQty) status = "Partial";
+                else if (recQtyRounded === item.reqQty) status = "Complete";
+                else status = "Over-received";
+            }
+
+            const grns = [...new Set(itemRecs.map(r => r.grnNumber).filter(Boolean))].join('; ');
+            const invoices = [...new Set(itemRecs.map(r => r.invoiceNumber).filter(Boolean))].join('; ');
+            const invoiceDates = [...new Set(itemRecs.map(r => r.invoiceDate).filter(Boolean))].filter(d => d && d !== '1899-12-30').join('; ');
+            const suppliers = [...new Set(itemRecs.map(r => r.supplierName).filter(Boolean))].join('; ');
+            
+            let totalUnitPrice = "";
+            let totalPrice = 0;
+            let hasPricing = false;
+
+            const pricedReceipts = itemRecs.filter(r => r.unitPrice);
+            if (pricedReceipts.length > 0) {
+                totalUnitPrice = pricedReceipts.map(r => r.unitPrice).join('; ');
+                totalPrice = itemRecs.reduce((sum, r) => {
+                    if (r.unitPrice && r.qty > 0) {
+                        const cost = Math.abs(r.qty) * r.unitPrice;
+                        totalSpend += cost;
+                        const sup = r.supplierName || 'Unknown Supplier';
+                        supplierSpend[sup] = (supplierSpend[sup] || 0) + cost;
+                        activeSuppliers.add(sup);
+                        return sum + cost;
+                    }
+                    return sum;
+                }, 0);
+                totalPrice = Math.round(totalPrice * 100) / 100;
+                hasPricing = true;
+            }
+
+            if (recQtyRounded > 0) {
+                if (hasPricing) pricedCount++;
+                else unpricedCount++;
+            }
+
+            itemsSheetData.push([
+                item.mrnNum || "",
+                item.reqDate || "",
+                item.vehicleMachinery || "",
+                item.itemName || "",
+                item.itemDesc || "",
+                item.category || "General Items",
+                item.reqQty || 0,
+                recQtyRounded,
+                recDate,
+                uniqueSources,
+                qtyGap,
+                dateGapDays,
+                status,
+                grns,
+                invoices,
+                invoiceDates,
+                suppliers,
+                totalUnitPrice,
+                totalPrice || ""
+            ]);
         }
 
         const wsItems = XLSX.utils.aoa_to_sheet(itemsSheetData);
         XLSX.utils.book_append_sheet(wb, wsItems, "Requests & Deliveries");
 
-        // Build summary sheet data
+        // 2. Build summary sheet data
         const summarySheetData = [];
         summarySheetData.push(["Supplier Name", "Total Spend (Rs.)", "Spend Share (%)"]);
         
@@ -970,6 +583,23 @@ $conn.Close()
 
         const wsSummary = XLSX.utils.aoa_to_sheet(summarySheetData);
         XLSX.utils.book_append_sheet(wb, wsSummary, "Financial Summary");
+
+        // 3. Build Outbound Issues sheet data
+        const issuesSheetData = [];
+        issuesSheetData.push(["Issue Date", "MRN Ref", "Item Name", "Qty Issued", "Issued to Vehicle", "Issued By", "Notes"]);
+        for (let issue of issues) {
+            issuesSheetData.push([
+                issue.date || "",
+                issue.mrnNum || "",
+                issue.itemName || "",
+                issue.qty || 0,
+                issue.vehicleMachinery || "",
+                issue.issuedBy || "",
+                issue.notes || ""
+            ]);
+        }
+        const wsIssues = XLSX.utils.aoa_to_sheet(issuesSheetData);
+        XLSX.utils.book_append_sheet(wb, wsIssues, "Outbound Issues");
 
         const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
         
@@ -1003,28 +633,207 @@ app.post('/api/import/pdf', async (req, res) => {
     }
 });
 
+// 9. Issues CRUD Endpoints
+app.get('/api/issues', (req, res) => {
+    try {
+        let sql = 'SELECT * FROM issues';
+        const params = [];
+        const where = [];
+
+        if (req.query.vehicle && req.query.vehicle !== 'all') {
+            where.push('LOWER(TRIM(vehicleMachinery)) = LOWER(TRIM(?))');
+            params.push(req.query.vehicle);
+        }
+        if (req.query.startDate) {
+            where.push('date >= ?');
+            params.push(req.query.startDate);
+        }
+        if (req.query.endDate) {
+            where.push('date <= ?');
+            params.push(req.query.endDate);
+        }
+        
+        if (where.length > 0) {
+            sql += ' WHERE ' + where.join(' AND ');
+        }
+        sql += ' ORDER BY date DESC, id DESC';
+
+        const issues = db.queryAll(sql, params);
+        res.json(issues);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/issues', (req, res) => {
+    try {
+        const { date, itemName, qty, vehicleMachinery, issuedBy, mrnNum, notes, itemId } = req.body;
+        const result = db.run(
+            'INSERT INTO issues (date, itemName, qty, vehicleMachinery, issuedBy, mrnNum, notes, itemId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [date || '', itemName || '', qty || 0, vehicleMachinery || '', issuedBy || '', mrnNum || null, notes || '', itemId || null]
+        );
+        res.json({ success: true, id: result.lastInsertRowid });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/issues/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { date, itemName, qty, vehicleMachinery, issuedBy, mrnNum, notes, itemId } = req.body;
+        db.run(
+            'UPDATE issues SET date = ?, itemName = ?, qty = ?, vehicleMachinery = ?, issuedBy = ?, mrnNum = ?, notes = ?, itemId = ? WHERE id = ?',
+            [date || '', itemName || '', qty || 0, vehicleMachinery || '', issuedBy || '', mrnNum || null, notes || '', itemId || null, id]
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/issues/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        db.run('DELETE FROM issues WHERE id = ?', [id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 10. Vehicle History Timeline Endpoint
+app.get('/api/vehicle-history', (req, res) => {
+    try {
+        const vehicle = req.query.vehicle;
+        if (!vehicle) {
+            return res.status(400).json({ error: "Missing vehicle parameter" });
+        }
+        const startDate = req.query.startDate || null;
+        const endDate = req.query.endDate || null;
+
+        const dateFilter = (col) => {
+            let filter = '';
+            const params = [];
+            if (startDate) {
+                filter += ` AND ${col} >= ? `;
+                params.push(startDate);
+            }
+            if (endDate) {
+                filter += ` AND ${col} <= ? `;
+                params.push(endDate);
+            }
+            return { filter, params };
+        };
+
+        // 1. Fetch Requisitions (Requests)
+        const reqFilter = dateFilter('reqDate');
+        const reqs = db.queryAll(
+            `SELECT id, mrnNum, reqDate as date, itemName, reqQty as qty, 'Request' as type, itemDesc as details FROM items WHERE LOWER(TRIM(vehicleMachinery)) = LOWER(TRIM(?)) ${reqFilter.filter}`,
+            [vehicle, ...reqFilter.params]
+        );
+
+        // 2. Fetch Receipts (Receives)
+        const recFilter = dateFilter('r.deliveryDate');
+        const recs = db.queryAll(
+            `SELECT r.id, i.mrnNum, r.deliveryDate as date, i.itemName, r.qty, 'Receive' as type, r.supplierName || ' (GRN: ' || r.grnNumber || ')' as details FROM receipts r JOIN items i ON r.itemId = i.id WHERE LOWER(TRIM(i.vehicleMachinery)) = LOWER(TRIM(?)) ${recFilter.filter}`,
+            [vehicle, ...recFilter.params]
+        );
+
+        // 3. Fetch Issues (Outbounds)
+        const issFilter = dateFilter('date');
+        const iss = db.queryAll(
+            `SELECT id, mrnNum, date, itemName, qty, 'Issue' as type, issuedBy || ' (Notes: ' || notes || ')' as details FROM issues WHERE LOWER(TRIM(vehicleMachinery)) = LOWER(TRIM(?)) ${issFilter.filter}`,
+            [vehicle, ...issFilter.params]
+        );
+
+        // Combine and Sort by Date Descending
+        const timeline = [...reqs, ...recs, ...iss].sort((a, b) => {
+            return new Date(b.date) - new Date(a.date);
+        });
+
+        res.json(timeline);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Dashboard aggregates endpoint
+app.get('/api/dashboard/stats', (req, res) => {
+    try {
+        // Total Spend
+        const spendResult = db.queryGet('SELECT SUM(ABS(qty) * unitPrice) as total FROM receipts WHERE unitPrice IS NOT NULL AND qty > 0');
+        const totalSpend = spendResult ? spendResult.total || 0 : 0;
+
+        // Active Suppliers
+        const supplierResult = db.queryGet('SELECT COUNT(DISTINCT supplierName) as count FROM receipts WHERE supplierName IS NOT NULL AND supplierName != \'\'');
+        const supplierCount = supplierResult ? supplierResult.count : 0;
+
+        // Priced Deliveries
+        const pricedResult = db.queryGet('SELECT COUNT(*) as count FROM receipts WHERE unitPrice IS NOT NULL AND unitPrice > 0 AND invoiceNumber IS NOT NULL AND invoiceNumber != \'\'');
+        const pricedCount = pricedResult ? pricedResult.count : 0;
+
+        // Unpriced / Pending
+        const unpricedResult = db.queryGet(`
+            SELECT COUNT(*) as count FROM items i
+            JOIN receipts r ON i.id = r.itemId
+            WHERE r.unitPrice IS NULL OR r.unitPrice = 0 OR r.invoiceNumber IS NULL OR r.invoiceNumber = ''
+        `);
+        const unpricedCount = unpricedResult ? unpricedResult.count : 0;
+
+        // Category breakdown
+        const categoryBreakdown = db.queryAll(`
+            SELECT category, COUNT(*) as count, SUM(reqQty) as totalReqQty 
+            FROM items 
+            GROUP BY category
+        `);
+
+        // Spend Trend by Month
+        const spendTrend = db.queryAll(`
+            SELECT strftime('%Y-%m', deliveryDate) as month, SUM(qty * unitPrice) as spend
+            FROM receipts
+            WHERE deliveryDate IS NOT NULL AND deliveryDate != '' AND unitPrice IS NOT NULL
+            GROUP BY month
+            ORDER BY month ASC
+        `);
+
+        // Supplier Distribution
+        const supplierShare = db.queryAll(`
+            SELECT supplierName, SUM(qty * unitPrice) as spend
+            FROM receipts
+            WHERE supplierName IS NOT NULL AND supplierName != '' AND unitPrice IS NOT NULL
+            GROUP BY supplierName
+            ORDER BY spend DESC
+            LIMIT 5
+        `);
+
+        res.json({
+            totalSpend,
+            supplierCount,
+            pricedCount,
+            unpricedCount,
+            categoryBreakdown,
+            spendTrend,
+            supplierShare
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Fetch active vehicles list
+app.get('/api/vehicles', (req, res) => {
+    try {
+        const vehicles = db.queryAll('SELECT DISTINCT vehicleMachinery FROM items WHERE vehicleMachinery IS NOT NULL AND vehicleMachinery != \'\' ORDER BY vehicleMachinery ASC');
+        res.json(vehicles.map(v => v.vehicleMachinery));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Delivery Monitor Server running at http://localhost:${PORT}`);
     console.log(`Database: ${DB_PATH}`);
-    
-    const networkInterfaces = os.networkInterfaces();
-    const localIPs = [];
-    for (const interfaceName in networkInterfaces) {
-        const interfaces = networkInterfaces[interfaceName];
-        for (const iface of interfaces) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                localIPs.push(iface.address);
-            }
-        }
-    }
-    
-    if (localIPs.length > 0) {
-        console.log(`\nTo access this server from other computers on your network:`);
-        localIPs.forEach(ip => {
-            console.log(`  http://${ip}:${PORT}`);
-        });
-        console.log();
-    }
 });
 
 // Automatic Backup System (Every 30 Minutes)
@@ -1046,7 +855,7 @@ function runAutomaticBackup() {
         const seconds = String(now.getSeconds()).padStart(2, '0');
         
         const timestamp = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
-        const backupPath = path.join(BACKUP_DIR, `inventory_backup_${timestamp}.accdb`);
+        const backupPath = path.join(BACKUP_DIR, `inventory_backup_${timestamp}.db`);
         
         if (fs.existsSync(DB_PATH)) {
             fs.copyFileSync(DB_PATH, backupPath);
@@ -1063,7 +872,7 @@ function runAutomaticBackup() {
 function cleanOldBackups() {
     try {
         const files = fs.readdirSync(BACKUP_DIR)
-            .filter(file => file.startsWith('inventory_backup_') && file.endsWith('.accdb'))
+            .filter(file => file.startsWith('inventory_backup_') && file.endsWith('.db'))
             .map(file => ({
                 name: file,
                 path: path.join(BACKUP_DIR, file),
