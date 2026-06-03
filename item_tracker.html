@@ -225,6 +225,13 @@
                     </span>
                     <span id="count-pending-pricing" class="sidebar-badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 py-0.5 px-3 rounded-full text-xs font-extrabold transition-all">0</span>
                 </a>
+                <a href="#issues" id="nav-issues" class="sidebar-btn w-full flex items-center justify-between px-3.5 py-3 text-slate-655 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 font-semibold rounded-2xl transition-all duration-200 border border-transparent outline-none">
+                    <span class="flex items-center">
+                        <svg class="sidebar-icon w-5 h-5 mr-3 text-slate-400 dark:text-slate-500 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                        <span class="sidebar-text">Outbound Issues</span>
+                    </span>
+                    <span id="count-issues" class="sidebar-badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 py-0.5 px-3 rounded-full text-xs font-extrabold transition-all">0</span>
+                </a>
                 <a href="#fleet" id="nav-fleet" class="sidebar-btn w-full flex items-center justify-between px-3.5 py-3 text-slate-655 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 font-semibold rounded-2xl transition-all duration-200 border border-transparent outline-none">
                     <span class="flex items-center">
                         <svg class="sidebar-icon w-5 h-5 mr-3 text-slate-400 dark:text-slate-500 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -439,6 +446,21 @@
                     </div>
                 </div>
 
+                <!-- Category Filter Chips -->
+                <div class="flex flex-wrap gap-2 items-center bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-100 dark:border-slate-850 shadow-sm">
+                    <span class="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">Category:</span>
+                    <button onclick="setCategoryFilter('all')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-indigo-600 border-indigo-600 text-white shadow-sm" id="chip-all">All</button>
+                    <button onclick="setCategoryFilter('Battery')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-Battery">Battery</button>
+                    <button onclick="setCategoryFilter('Filters')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-Filters">Filters</button>
+                    <button onclick="setCategoryFilter('Tyre')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-Tyre">Tyre</button>
+                    <button onclick="setCategoryFilter('Oil & Lubricants')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-OilLubricants">Oil & Lubricants</button>
+                    <button onclick="setCategoryFilter('Bearings & Seals')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-BearingsSeals">Bearings & Seals</button>
+                    <button onclick="setCategoryFilter('Hydraulics')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-Hydraulics">Hydraulics</button>
+                    <button onclick="setCategoryFilter('Electrical')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-Electrical">Electrical</button>
+                    <button onclick="setCategoryFilter('Belts')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-Belts">Belts</button>
+                    <button onclick="setCategoryFilter('General Items')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700" id="chip-GeneralItems">General Items</button>
+                </div>
+
                 <!-- Main Data Table Container -->
                 <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-glass-light dark:shadow-glass-dark border border-slate-100 dark:border-slate-850/80 overflow-hidden relative hover:shadow-glow transition-all duration-300">
                     <div class="overflow-x-auto max-h-[750px] overflow-y-auto">
@@ -450,6 +472,9 @@
                                     </th>
                                     <th onclick="toggleSort('itemName')" class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest cursor-pointer hover:text-indigo-600 transition whitespace-nowrap">
                                         Item Details <span id="sort-itemName" class="ml-1 text-[10px]"></span>
+                                    </th>
+                                    <th onclick="toggleSort('category')" class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest cursor-pointer hover:text-indigo-600 transition whitespace-nowrap">
+                                        Category <span id="sort-category" class="ml-1 text-[10px]"></span>
                                     </th>
                                     <th onclick="toggleSort('reqDate')" class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest cursor-pointer hover:text-indigo-650 transition whitespace-nowrap">
                                         Requested <span id="sort-reqDate" class="ml-1 text-[10px]"></span>
@@ -671,11 +696,99 @@
             </section>
 
             <!-- VIEW: Fleet View (Grouped by Vehicle/Machinery) -->
-            <section id="view-fleet" class="route-view hidden space-y-6">
-                <div class="space-y-4">
-                    <h2 class="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Fleet & Machinery Health Board</h2>
+            <section id="view-fleet" class="route-view hidden space-y-6 animate-fade-in">
+                <!-- Sub Navigation Tabs -->
+                <div class="flex border-b border-slate-200 dark:border-slate-800">
+                    <button onclick="switchFleetSubView('board')" id="fleetTab-board" class="px-5 py-3 border-b-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold text-sm outline-none">Supply Status Board</button>
+                    <button onclick="switchFleetSubView('history')" id="fleetTab-history" class="px-5 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-bold text-sm outline-none">Vehicle History Timeline</button>
+                </div>
+
+                <!-- Sub-View: Supply Status Board -->
+                <div id="fleetSubView-board" class="space-y-4">
+                    <h2 class="text-xs font-extrabold text-slate-400 dark:text-slate-555 uppercase tracking-widest">Fleet & Machinery Health Board</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="fleetGridContainer">
                         <!-- Grouped vehicle cards loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Sub-View: Vehicle History Timeline -->
+                <div id="fleetSubView-history" class="hidden space-y-6">
+                    <!-- Filters -->
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-glass-light dark:shadow-glass-dark p-6 space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <h3 class="text-xs font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Vehicle Timeline Query
+                            </h3>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Select Vehicle/Machinery <span class="text-red-500">*</span></label>
+                                <select id="fleetHistoryVehicleSelect" onchange="loadVehicleHistory()" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500 outline-none transition text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-850 dark:text-slate-100 font-bold">
+                                    <option value="">-- Select Vehicle --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">From Date</label>
+                                <input type="date" id="fleetHistoryStartDate" onchange="loadVehicleHistory()" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border focus:border-indigo-555 focus:ring-indigo-500 outline-none transition text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">To Date</label>
+                                <input type="date" id="fleetHistoryEndDate" onchange="loadVehicleHistory()" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border focus:border-indigo-555 focus:ring-indigo-555 outline-none transition text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Activity Feed -->
+                    <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-3xl p-6 shadow-glass-light dark:shadow-glass-dark">
+                        <div id="fleetHistoryTimeline" class="relative border-l-2 border-indigo-100 dark:border-indigo-950/80 ml-4 space-y-8 py-2">
+                            <!-- Timeline items injected dynamically -->
+                            <div class="pl-8 text-slate-400 dark:text-slate-550 italic text-sm">Please select a vehicle to view its transaction and log timeline.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: Outbound Issues -->
+            <section id="view-issues" class="route-view hidden space-y-6">
+                <!-- Search bar & Log Issue button -->
+                <div class="flex justify-between items-center gap-6">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-800 dark:text-white">Outbound Issues Log</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Track parts issued out of inventory to fleet vehicles</p>
+                    </div>
+                    <button onclick="openAddIssueModal()" class="px-5 py-3 bg-indigo-650 hover:bg-indigo-700 text-white font-bold rounded-2xl transition shadow-sm hover:shadow-glow flex items-center justify-center gap-2 text-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                        Log Outbound Issue
+                    </button>
+                </div>
+
+                <!-- Issues Data Table Container -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-glass-light dark:shadow-glass-dark border border-slate-100 dark:border-slate-850/80 overflow-hidden relative hover:shadow-glow transition-all duration-300">
+                    <div class="overflow-x-auto max-h-[750px] overflow-y-auto">
+                        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800 relative">
+                            <thead class="bg-slate-50 dark:bg-slate-900/80 sticky top-0 z-10 shadow-sm border-b border-slate-150 dark:border-slate-800 glass-panel">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Date</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">MRN Ref</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Item Name</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Qty</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Vehicle / Machinery</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Issued By</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 dark:text-slate-555 uppercase tracking-widest whitespace-nowrap">Notes</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-400 dark:text-slate-555 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="issuesTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                                <!-- Rows loaded dynamically -->
+                            </tbody>
+                        </table>
+                        <div id="issuesEmptyState" class="hidden p-16 text-center text-slate-500 dark:text-slate-400">
+                            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 mb-6 shadow-sm">
+                                <svg class="w-10 h-10 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                            </div>
+                            <p class="text-lg font-bold text-slate-700 dark:text-slate-350">No outbound issues logged yet.</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -714,6 +827,20 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Item Name <span class="text-red-500">*</span></label>
                     <input type="text" id="itemName" required placeholder="e.g. Oil Filter" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500 outline-none transition text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Category <span class="text-red-500">*</span></label>
+                    <select id="itemCategory" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500 outline-none transition text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-bold">
+                        <option value="General Items">General Items</option>
+                        <option value="Filters">Filters</option>
+                        <option value="Battery">Battery</option>
+                        <option value="Tyre">Tyre</option>
+                        <option value="Oil & Lubricants">Oil & Lubricants</option>
+                        <option value="Bearings & Seals">Bearings & Seals</option>
+                        <option value="Hydraulics">Hydraulics</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Belts">Belts</option>
+                    </select>
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Item Description</label>
@@ -837,9 +964,23 @@
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Vehicle / Machinery <span class="text-red-500">*</span></label>
                         <input type="text" id="editReqVehicle" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500 outline-none transition text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-850 dark:text-slate-100 font-semibold">
                     </div>
-                    <div class="sm:col-span-2">
+                    <div>
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Material / Item Name <span class="text-red-500">*</span></label>
                         <input type="text" id="editReqName" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500 outline-none transition text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-855 dark:text-slate-100 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Category <span class="text-red-500">*</span></label>
+                        <select id="editReqCategory" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500 outline-none transition text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-855 dark:text-slate-100 font-bold">
+                            <option value="General Items">General Items</option>
+                            <option value="Filters">Filters</option>
+                            <option value="Battery">Battery</option>
+                            <option value="Tyre">Tyre</option>
+                            <option value="Oil & Lubricants">Oil & Lubricants</option>
+                            <option value="Bearings & Seals">Bearings & Seals</option>
+                            <option value="Hydraulics">Hydraulics</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Belts">Belts</option>
+                        </select>
                     </div>
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Item Description</label>
@@ -863,6 +1004,121 @@
         </div>
     </div>
 
+    <!-- Add Issue Modal -->
+    <div id="addIssueModal" class="hidden fixed inset-0 bg-slate-950/60 overflow-y-auto h-full w-full flex items-center justify-center backdrop-blur-md transition-opacity z-50 p-4 sm:p-6">
+        <div class="relative bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-100 dark:border-slate-800 transform scale-100 transition-transform">
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <h3 class="text-xl font-extrabold text-slate-800 dark:text-white flex items-center">
+                    <svg class="w-6 h-6 mr-2.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Log Outbound Issue
+                </h3>
+                <button onclick="closeAddIssueModal()" class="text-slate-400 hover:text-slate-655 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-750 rounded-full p-2 transition">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <form id="addIssueForm" class="space-y-4">
+                <input type="hidden" id="addIssueItemId" value="">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Issue Date <span class="text-red-500">*</span></label>
+                        <input type="date" id="addIssueDate" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Link to Requisition (MRN)</label>
+                        <select id="addIssueMrnSelect" onchange="handleIssueMrnSelectChange()" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-bold">
+                            <option value="custom">Custom Requisition (Free Text)</option>
+                        </select>
+                    </div>
+                    <div id="addIssueMrnCustomContainer" class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">MRN Number (Custom)</label>
+                        <input type="text" id="addIssueMrnCustom" placeholder="e.g. MRN-5566" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Material / Item Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="addIssueItemName" required placeholder="e.g. Engine Oil" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Quantity Issued <span class="text-red-500">*</span></label>
+                        <input type="number" id="addIssueQty" step="0.01" required min="0.01" placeholder="e.g. 5" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Issued to Vehicle/Machinery <span class="text-red-500">*</span></label>
+                        <input type="text" id="addIssueVehicle" required placeholder="e.g. TR-2233" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Issued By <span class="text-red-500">*</span></label>
+                        <input type="text" id="addIssueIssuedBy" required placeholder="Technician or operator name" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Notes / Details</label>
+                        <textarea id="addIssueNotes" placeholder="Additional details..." class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 h-20 resize-none"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-6">
+                    <button type="button" onclick="closeAddIssueModal()" class="px-5 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-750 transition text-sm">Cancel</button>
+                    <button type="submit" class="px-6 py-3 bg-indigo-650 hover:bg-indigo-700 text-white font-bold rounded-xl hover:shadow-glow shadow-sm transition text-sm">Log Issue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Issue Modal -->
+    <div id="editIssueModal" class="hidden fixed inset-0 bg-slate-950/60 overflow-y-auto h-full w-full flex items-center justify-center backdrop-blur-md transition-opacity z-50 p-4 sm:p-6">
+        <div class="relative bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-100 dark:border-slate-800 transform scale-100 transition-transform">
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <h3 class="text-xl font-extrabold text-slate-800 dark:text-white flex items-center">
+                    <svg class="w-6 h-6 mr-2.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    Edit Outbound Issue
+                </h3>
+                <button onclick="closeEditIssueModal()" class="text-slate-400 hover:text-slate-655 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-750 rounded-full p-2 transition">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <form id="editIssueForm" class="space-y-4">
+                <input type="hidden" id="editIssueId" value="">
+                <input type="hidden" id="editIssueItemId" value="">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Issue Date <span class="text-red-500">*</span></label>
+                        <input type="date" id="editIssueDate" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">MRN Number (Reference)</label>
+                        <input type="text" id="editIssueMrnNum" placeholder="e.g. MRN-5566" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Material / Item Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="editIssueItemName" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Quantity Issued <span class="text-red-500">*</span></label>
+                        <input type="number" id="editIssueQty" step="0.01" required min="0.01" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Issued to Vehicle/Machinery <span class="text-red-500">*</span></label>
+                        <input type="text" id="editIssueVehicle" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Issued By <span class="text-red-500">*</span></label>
+                        <input type="text" id="editIssueIssuedBy" required class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Notes / Details</label>
+                        <textarea id="editIssueNotes" class="block w-full rounded-xl border-slate-200 dark:border-slate-800 shadow-sm p-3 border outline-none text-sm bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-800 dark:text-slate-100 h-20 resize-none"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-6">
+                    <button type="button" onclick="closeEditIssueModal()" class="px-5 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-750 transition text-sm">Cancel</button>
+                    <button type="submit" class="px-6 py-3 bg-indigo-650 hover:bg-indigo-700 text-white font-bold rounded-xl hover:shadow-glow shadow-sm transition text-sm">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Script Logic -->
     <script>
         // DOM Elements
@@ -879,6 +1135,7 @@
         let items = [];
         let searchQuery = '';
         let currentFilterTab = 'all';
+        let currentCategoryFilter = 'all';
         let isSidebarCollapsed = false;
         let sortColumn = 'reqDate'; // Default sort
         let sortDirection = 'desc'; // Default direction
@@ -892,6 +1149,7 @@
         let totalItems = 0;
         let totalPages = 1;
         let allItems = [];
+        let allIssues = [];
         let currentView = 'dashboard';
         let searchTimeout;
 
@@ -1023,6 +1281,16 @@
                             }
                         });
                         this.updateQueueItemIds(tempRecId, realRecId);
+                    } else if (item.action === 'CREATE_ISSUE' && responseData && responseData.id) {
+                        const realIssueId = responseData.id;
+                        const tempIssueId = item.id;
+                        
+                        allIssues.forEach(memIssue => {
+                            if (String(memIssue.id) === String(tempIssueId)) {
+                                memIssue.id = realIssueId;
+                            }
+                        });
+                        this.updateQueueItemIds(tempIssueId, realIssueId);
                     }
 
                     this.isProcessing = false;
@@ -1363,7 +1631,7 @@
         // Fetch paginated page of items for the tracker grid
         async function fetchTrackerPage() {
             try {
-                const url = `/api/items?page=${currentPage}&limit=${pageSize}&search=${encodeURIComponent(searchQuery)}&filter=${currentFilterTab}&sort=${sortColumn}&order=${sortDirection}&startDate=${encodeURIComponent(searchStartDate)}&endDate=${encodeURIComponent(searchEndDate)}&vehicle=${encodeURIComponent(searchVehicle)}`;
+                const url = `/api/items?page=${currentPage}&limit=${pageSize}&search=${encodeURIComponent(searchQuery)}&filter=${currentFilterTab}&category=${encodeURIComponent(currentCategoryFilter)}&sort=${sortColumn}&order=${sortDirection}&startDate=${encodeURIComponent(searchStartDate)}&endDate=${encodeURIComponent(searchEndDate)}&vehicle=${encodeURIComponent(searchVehicle)}`;
                 const res = await fetch(url);
                 if (!res.ok) throw new Error('Failed to load tracker page');
                 const data = await res.json();
@@ -1392,6 +1660,24 @@
             }
         }
 
+        function setCategoryFilter(category) {
+            currentCategoryFilter = category;
+            currentPage = 1;
+            
+            // Update active styling of chips
+            document.querySelectorAll('.category-chip').forEach(btn => {
+                btn.className = "category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-655 dark:text-slate-350 border-slate-200 dark:border-slate-700";
+            });
+            
+            const activeId = 'chip-' + category.replace(/\s+/g, '').replace('&', '');
+            const activeBtn = document.getElementById(activeId);
+            if (activeBtn) {
+                activeBtn.className = "category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold transition border bg-indigo-600 border-indigo-600 text-white shadow-sm";
+            }
+            
+            fetchTrackerPage();
+        }
+
         // Fetch unpaginated database items for metrics summaries
         async function loadAllData() {
             try {
@@ -1404,6 +1690,12 @@
                     recalcItemReceipts(item);
                     return item;
                 });
+
+                // Also load issues
+                const resIssues = await fetch('/api/issues');
+                if (resIssues.ok) {
+                    allIssues = await resIssues.json();
+                }
 
                 // Populate vehicle select dropdown dynamically
                 populateAdvancedSearchVehicles();
@@ -1457,7 +1749,7 @@
 
         function populateAdvancedSearchVehicles() {
             const select = document.getElementById('advVehicle');
-            if (!select) return;
+            const fleetSelect = document.getElementById('fleetHistoryVehicleSelect');
 
             const vehicles = new Set();
             allItems.forEach(item => {
@@ -1467,19 +1759,31 @@
                 }
             });
 
-            const currentSelected = searchVehicle;
-            select.innerHTML = '<option value="all">All Vehicles / Machinery</option>';
-            
             const sortedVehicles = Array.from(vehicles).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-            sortedVehicles.forEach(vehicle => {
-                const opt = document.createElement('option');
-                opt.value = vehicle;
-                opt.textContent = vehicle;
-                if (vehicle === currentSelected) {
-                    opt.selected = true;
-                }
-                select.appendChild(opt);
-            });
+            
+            if (select) {
+                const currentSelected = searchVehicle;
+                select.innerHTML = '<option value="all">All Vehicles / Machinery</option>';
+                sortedVehicles.forEach(vehicle => {
+                    const opt = document.createElement('option');
+                    opt.value = vehicle;
+                    opt.textContent = vehicle;
+                    if (vehicle === currentSelected) opt.selected = true;
+                    select.appendChild(opt);
+                });
+            }
+
+            if (fleetSelect) {
+                const currentSelected = fleetSelect.value;
+                fleetSelect.innerHTML = '<option value="">-- Select Vehicle --</option>';
+                sortedVehicles.forEach(vehicle => {
+                    const opt = document.createElement('option');
+                    opt.value = vehicle;
+                    opt.textContent = vehicle;
+                    if (vehicle === currentSelected) opt.selected = true;
+                    fleetSelect.appendChild(opt);
+                });
+            }
         }
 
         function updateSidebarBadges() {
@@ -1502,10 +1806,39 @@
             const allBadge = document.getElementById('count-all');
             const delBadge = document.getElementById('count-pending-delivery');
             const prBadge = document.getElementById('count-pending-pricing');
+            const issuesBadge = document.getElementById('count-issues');
             
             if (allBadge) allBadge.textContent = countAll;
             if (delBadge) delBadge.textContent = countPendingDelivery;
             if (prBadge) prBadge.textContent = countPendingPricing;
+            if (issuesBadge) {
+                const displayIssues = JSON.parse(JSON.stringify(allIssues));
+                applyIssueQueueMutations(displayIssues);
+                issuesBadge.textContent = displayIssues.length;
+            }
+        }
+
+        function getCategoryBadge(category) {
+            const cat = category || 'General Items';
+            let style = 'bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-400 border-slate-250 dark:border-slate-800';
+            if (cat === 'Battery') {
+                style = 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/30';
+            } else if (cat === 'Filters') {
+                style = 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/30';
+            } else if (cat === 'Tyre') {
+                style = 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-705 dark:text-emerald-450 border-emerald-100 dark:border-emerald-900/30';
+            } else if (cat === 'Oil & Lubricants') {
+                style = 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border-teal-100 dark:border-teal-900/30';
+            } else if (cat === 'Bearings & Seals') {
+                style = 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 border-orange-100 dark:border-orange-900/30';
+            } else if (cat === 'Hydraulics') {
+                style = 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 border-cyan-100 dark:border-cyan-900/30';
+            } else if (cat === 'Electrical') {
+                style = 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30';
+            } else if (cat === 'Belts') {
+                style = 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border-purple-100 dark:border-purple-900/30';
+            }
+            return `<span class="px-2.5 py-1 rounded-full text-xs font-bold border ${style}">${cat}</span>`;
         }
 
         // Render paginated tracker view
@@ -1604,6 +1937,9 @@
                         <td class="px-6 py-4.5 whitespace-nowrap">
                             <div class="text-sm font-bold text-slate-800 dark:text-slate-250">${highlightMatch(item.name, searchQuery)}</div>
                             <div class="text-xs text-slate-400 dark:text-slate-500 font-medium truncate max-w-[155px] mt-0.5" title="${item.itemDesc || ''}">${highlightMatch(item.itemDesc, searchQuery)}</div>
+                        </td>
+                        <td class="px-6 py-4.5 whitespace-nowrap">
+                            ${getCategoryBadge(item.category)}
                         </td>
                         <td class="px-6 py-4.5 whitespace-nowrap">
                             <div class="text-sm font-extrabold text-slate-900 dark:text-white">${item.reqQty}</div>
@@ -2363,7 +2699,7 @@
         // Central Router Engine
         function handleRouting() {
             const hash = window.location.hash || '#dashboard';
-            const views = ['dashboard', 'tracker', 'receiving', 'pricing', 'fleet'];
+            const views = ['dashboard', 'tracker', 'receiving', 'pricing', 'issues', 'fleet'];
             
             let matchedView = 'dashboard';
             let routeParam = null;
@@ -2426,6 +2762,9 @@
                     break;
                 case 'pricing':
                     renderPricingDesk();
+                    break;
+                case 'issues':
+                    renderIssuesTable();
                     break;
                 case 'fleet':
                     renderFleetView();
@@ -2619,6 +2958,7 @@
             document.getElementById('editReqDateInput').value = item.reqDate || '';
             document.getElementById('editReqVehicle').value = item.vehicleMachinery || '';
             document.getElementById('editReqName').value = item.itemName || '';
+            document.getElementById('editReqCategory').value = item.category || 'General Items';
             document.getElementById('editReqDesc').value = item.itemDesc || '';
             document.getElementById('editReqQtyInput').value = item.reqQty || '';
             document.getElementById('editReqPassword').value = ''; // Reset password field
@@ -2649,7 +2989,8 @@
             const itemDesc = document.getElementById('editReqDesc').value.trim();
             const reqQty = parseFloat(document.getElementById('editReqQtyInput').value);
 
-            const updateData = { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty };
+            const category = document.getElementById('editReqCategory').value;
+            const updateData = { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty, category };
 
             await syncService.enqueue(
                 'UPDATE_ITEM',
@@ -2681,10 +3022,11 @@
             const reqDate = document.getElementById('reqDate').value;
             const vehicleMachinery = document.getElementById('vehicleMachinery').value.trim();
             const itemName = document.getElementById('itemName').value.trim();
+            const category = document.getElementById('itemCategory').value;
             const itemDesc = document.getElementById('itemDesc').value.trim();
             const reqQty = parseFloat(document.getElementById('reqQty').value);
 
-            const newItem = { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty };
+            const newItem = { mrnNum, reqDate, vehicleMachinery, itemName, itemDesc, reqQty, category };
 
             await syncService.enqueue(
                 'CREATE_ITEM',
@@ -2699,6 +3041,7 @@
                         vehicleMachinery,
                         itemName,
                         name: itemName,
+                        category,
                         itemDesc,
                         reqQty,
                         recQty: 0,
@@ -3248,6 +3591,390 @@
 
         function loadItems() {
             loadAllData();
+        }
+
+        // Auto-classification helper rules
+        function frontendClassifyItem(name) {
+            if (!name) return 'General Items';
+            const lower = name.toLowerCase();
+            if (lower.includes('filter') || lower.includes('cleaner') || lower.includes('element')) return 'Filters';
+            if (lower.includes('battery') || lower.includes('batt') || lower.includes('accumulator') || lower.includes('battey')) return 'Battery';
+            if (lower.includes('tyre') || lower.includes('tire') || lower.includes('tube') || lower.includes('flap')) return 'Tyre';
+            if (lower.includes('oil') || lower.includes('grease') || lower.includes('lubricant') || lower.includes('coolant') || lower.includes('fluid') || lower.includes('petrol') || lower.includes('diesel')) return 'Oil & Lubricants';
+            if (lower.includes('bearing') || lower.includes('seal') || lower.includes('gasket') || lower.includes('o-ring') || lower.includes('o ring') || lower.includes('bush') || lower.includes('spacer') || lower.includes('shim')) return 'Bearings & Seals';
+            if (lower.includes('hydraulic') || lower.includes('hose') || lower.includes('coupling') || lower.includes('cylinder') || lower.includes('fittings') || lower.includes('adapter') || lower.includes('valve') || lower.includes('pump')) return 'Hydraulics';
+            if (lower.includes('cable') || lower.includes('switch') || lower.includes('light') || lower.includes('bulb') || lower.includes('wire') || lower.includes('harness') || lower.includes('solenoid') || lower.includes('starter') || lower.includes('alternator') || lower.includes('dynamo') || lower.includes('sensor') || lower.includes('relay') || lower.includes('fuse') || lower.includes('horn') || lower.includes('meter')) return 'Electrical';
+            if (lower.includes('belt') || lower.includes('v-belt') || lower.includes('v belt')) return 'Belts';
+            return 'General Items';
+        }
+
+        // Hook input event listeners for auto-classification
+        document.getElementById('itemName').addEventListener('input', (e) => {
+            const cat = frontendClassifyItem(e.target.value);
+            document.getElementById('itemCategory').value = cat;
+        });
+        document.getElementById('editReqName').addEventListener('input', (e) => {
+            const cat = frontendClassifyItem(e.target.value);
+            document.getElementById('editReqCategory').value = cat;
+        });
+
+        // Fleet View Sub-View switcher
+        let currentFleetSubView = 'board';
+        function switchFleetSubView(view) {
+            currentFleetSubView = view;
+            
+            const tabBoard = document.getElementById('fleetTab-board');
+            const tabHistory = document.getElementById('fleetTab-history');
+            const viewBoard = document.getElementById('fleetSubView-board');
+            const viewHistory = document.getElementById('fleetSubView-history');
+            
+            if (view === 'board') {
+                tabBoard.className = "px-5 py-3 border-b-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold text-sm outline-none";
+                tabHistory.className = "px-5 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-bold text-sm outline-none";
+                viewBoard.classList.remove('hidden');
+                viewHistory.classList.add('hidden');
+            } else {
+                tabBoard.className = "px-5 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-bold text-sm outline-none";
+                tabHistory.className = "px-5 py-3 border-b-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold text-sm outline-none";
+                viewBoard.classList.add('hidden');
+                viewHistory.classList.remove('hidden');
+            }
+        }
+
+        // Vehicle History Activity Timeline
+        async function loadVehicleHistory() {
+            const vehicle = document.getElementById('fleetHistoryVehicleSelect').value;
+            const timelineEl = document.getElementById('fleetHistoryTimeline');
+            if (!timelineEl) return;
+
+            if (!vehicle) {
+                timelineEl.innerHTML = '<div class="pl-8 text-slate-400 dark:text-slate-550 italic text-sm">Please select a vehicle to view its transaction and log timeline.</div>';
+                return;
+            }
+
+            const startDate = document.getElementById('fleetHistoryStartDate').value;
+            const endDate = document.getElementById('fleetHistoryEndDate').value;
+
+            try {
+                timelineEl.innerHTML = '<div class="pl-8 text-slate-400 dark:text-slate-550 italic text-sm">Loading vehicle activity timeline...</div>';
+                
+                const url = `/api/vehicle-history?vehicle=${encodeURIComponent(vehicle)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Failed to load history');
+                const timelineData = await res.json();
+
+                if (timelineData.length === 0) {
+                    timelineEl.innerHTML = '<div class="pl-8 text-slate-400 dark:text-slate-550 italic text-sm">No activity recorded for this vehicle in the selected date range.</div>';
+                    return;
+                }
+
+                timelineEl.innerHTML = timelineData.map(act => {
+                    let colorClass = '';
+                    let iconSvg = '';
+                    let titleText = '';
+                    let detailsText = act.details || '-';
+
+                    if (act.type === 'Request') {
+                        colorClass = 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400';
+                        iconSvg = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>`;
+                        titleText = `Requisition Opened: ${act.itemName} (Qty: ${act.qty})`;
+                    } else if (act.type === 'Receive') {
+                        colorClass = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455';
+                        iconSvg = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>`;
+                        titleText = `Material Delivered: ${act.itemName} (Qty: ${act.qty})`;
+                    } else if (act.type === 'Issue') {
+                        colorClass = 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-455';
+                        iconSvg = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>`;
+                        titleText = `Inventory Issued: ${act.itemName} (Qty: ${act.qty})`;
+                    }
+
+                    return `
+                        <div class="relative pl-8">
+                            <span class="absolute left-[-17px] top-1.5 flex items-center justify-center w-8 h-8 rounded-full border-2 ${colorClass} shadow-sm z-10">
+                                ${iconSvg}
+                            </span>
+                            <div class="bg-slate-50 dark:bg-slate-950/40 p-4 border border-slate-150 dark:border-slate-850 rounded-2xl space-y-1.5 animate-fade-in">
+                                <div class="flex justify-between items-center text-xs font-bold">
+                                    <span class="text-sm font-extrabold text-slate-800 dark:text-slate-200">${titleText}</span>
+                                    <span class="px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-550">${act.date}</span>
+                                </div>
+                                <div class="text-xs text-slate-500 dark:text-slate-455 font-medium">MRN: <strong class="text-slate-700 dark:text-slate-300 font-extrabold">${act.mrnNum || '-'}</strong></div>
+                                <div class="text-xs text-slate-655 dark:text-slate-400 mt-1">${detailsText}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Timeline load error:", err);
+                timelineEl.innerHTML = '<div class="pl-8 text-rose-500 italic text-sm">Failed to load timeline. Please check connectivity.</div>';
+            }
+        }
+
+        // Outbound Issues Local-First Queue mutator
+        function applyIssueQueueMutations(issuesList) {
+            syncService.queue.forEach(q => {
+                try {
+                    if (q.action === 'CREATE_ISSUE') {
+                        issuesList.unshift({
+                            id: q.id,
+                            ...q.body
+                        });
+                    } else if (q.action === 'DELETE_ISSUE') {
+                        const match = q.url.match(/\/api\/issues\/([^/]+)/);
+                        if (match) {
+                            const delId = match[1];
+                            const idx = issuesList.findIndex(i => String(i.id) === String(delId));
+                            if (idx !== -1) issuesList.splice(idx, 1);
+                        }
+                    } else if (q.action === 'UPDATE_ISSUE') {
+                        const match = q.url.match(/\/api\/issues\/([^/]+)/);
+                        if (match) {
+                            const editId = match[1];
+                            const issue = issuesList.find(i => String(i.id) === String(editId));
+                            if (issue) {
+                                Object.assign(issue, q.body);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error("Issue queue mutation error:", err, q);
+                }
+            });
+        }
+
+        // Issues CRUD UI Controllers
+        function openAddIssueModal() {
+            const select = document.getElementById('addIssueMrnSelect');
+            if (select) {
+                select.innerHTML = '<option value="custom">Custom Requisition (Free Text)</option>';
+                allItems.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = `${item.mrnNum} - ${item.name} (${item.vehicleMachinery})`;
+                    select.appendChild(opt);
+                });
+            }
+            
+            document.getElementById('addIssueDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('addIssueItemId').value = '';
+            document.getElementById('addIssueMrnCustom').value = '';
+            document.getElementById('addIssueItemName').value = '';
+            document.getElementById('addIssueQty').value = '';
+            document.getElementById('addIssueVehicle').value = '';
+            document.getElementById('addIssueIssuedBy').value = '';
+            document.getElementById('addIssueNotes').value = '';
+            
+            handleIssueMrnSelectChange();
+            document.getElementById('addIssueModal').classList.remove('hidden');
+        }
+
+        function closeAddIssueModal() {
+            document.getElementById('addIssueModal').classList.add('hidden');
+        }
+
+        function handleIssueMrnSelectChange() {
+            const select = document.getElementById('addIssueMrnSelect');
+            const customContainer = document.getElementById('addIssueMrnCustomContainer');
+            const nameInput = document.getElementById('addIssueItemName');
+            const vehicleInput = document.getElementById('addIssueVehicle');
+            const itemIdInput = document.getElementById('addIssueItemId');
+            
+            if (!select || !customContainer) return;
+            
+            if (select.value === 'custom') {
+                customContainer.classList.remove('hidden');
+                nameInput.value = '';
+                vehicleInput.value = '';
+                itemIdInput.value = '';
+                nameInput.readOnly = false;
+                vehicleInput.readOnly = false;
+            } else {
+                customContainer.classList.add('hidden');
+                const selectedItem = allItems.find(item => String(item.id) === String(select.value));
+                if (selectedItem) {
+                    nameInput.value = selectedItem.name || '';
+                    vehicleInput.value = selectedItem.vehicleMachinery || '';
+                    itemIdInput.value = selectedItem.id;
+                    nameInput.readOnly = true;
+                    vehicleInput.readOnly = true;
+                }
+            }
+        }
+
+        function openEditIssueModal(issueId) {
+            const issue = allIssues.find(i => String(i.id) === String(issueId));
+            if (!issue) return;
+            
+            document.getElementById('editIssueId').value = issue.id;
+            document.getElementById('editIssueItemId').value = issue.itemId || '';
+            document.getElementById('editIssueDate').value = issue.date || '';
+            document.getElementById('editIssueMrnNum').value = issue.mrnNum || '';
+            document.getElementById('editIssueItemName').value = issue.itemName || '';
+            document.getElementById('editIssueQty').value = issue.qty || '';
+            document.getElementById('editIssueVehicle').value = issue.vehicleMachinery || '';
+            document.getElementById('editIssueIssuedBy').value = issue.issuedBy || '';
+            document.getElementById('editIssueNotes').value = issue.notes || '';
+            
+            const nameInput = document.getElementById('editIssueItemName');
+            const vehicleInput = document.getElementById('editIssueVehicle');
+            if (issue.itemId) {
+                nameInput.readOnly = true;
+                vehicleInput.readOnly = true;
+            } else {
+                nameInput.readOnly = false;
+                vehicleInput.readOnly = false;
+            }
+            
+            document.getElementById('editIssueModal').classList.remove('hidden');
+        }
+
+        function closeEditIssueModal() {
+            document.getElementById('editIssueModal').classList.add('hidden');
+        }
+
+        // Log issue form submit
+        const addIssueForm = document.getElementById('addIssueForm');
+        addIssueForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const date = document.getElementById('addIssueDate').value;
+            const select = document.getElementById('addIssueMrnSelect').value;
+            const itemId = select === 'custom' ? null : parseInt(select);
+            
+            let mrnNum = '';
+            if (select === 'custom') {
+                mrnNum = document.getElementById('addIssueMrnCustom').value.trim();
+            } else {
+                const selectedItem = allItems.find(item => String(item.id) === String(select));
+                if (selectedItem) mrnNum = selectedItem.mrnNum || '';
+            }
+            
+            const itemName = document.getElementById('addIssueItemName').value.trim();
+            const qty = parseFloat(document.getElementById('addIssueQty').value);
+            const vehicleMachinery = document.getElementById('addIssueVehicle').value.trim();
+            const issuedBy = document.getElementById('addIssueIssuedBy').value.trim();
+            const notes = document.getElementById('addIssueNotes').value.trim();
+            
+            const newIssue = { date, itemName, qty, vehicleMachinery, issuedBy, mrnNum, notes, itemId };
+            
+            await syncService.enqueue(
+                'CREATE_ISSUE',
+                '/api/issues',
+                'POST',
+                newIssue,
+                (tempId) => {
+                    const localIssue = {
+                        id: tempId,
+                        ...newIssue
+                    };
+                    allIssues.unshift(localIssue);
+                    updateSidebarBadges();
+                    if (currentView === 'issues') {
+                        renderIssuesTable();
+                    }
+                }
+            );
+            
+            addIssueForm.reset();
+            closeAddIssueModal();
+        });
+
+        // Edit issue form submit
+        const editIssueForm = document.getElementById('editIssueForm');
+        editIssueForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editIssueId').value;
+            const rawItemId = document.getElementById('editIssueItemId').value;
+            const itemId = rawItemId ? parseInt(rawItemId) : null;
+            
+            const date = document.getElementById('editIssueDate').value;
+            const mrnNum = document.getElementById('editIssueMrnNum').value.trim();
+            const itemName = document.getElementById('editIssueItemName').value.trim();
+            const qty = parseFloat(document.getElementById('editIssueQty').value);
+            const vehicleMachinery = document.getElementById('editIssueVehicle').value.trim();
+            const issuedBy = document.getElementById('editIssueIssuedBy').value.trim();
+            const notes = document.getElementById('editIssueNotes').value.trim();
+            
+            const updateData = { date, itemName, qty, vehicleMachinery, issuedBy, mrnNum, notes, itemId };
+            
+            await syncService.enqueue(
+                'UPDATE_ISSUE',
+                `/api/issues/${id}`,
+                'PUT',
+                updateData,
+                () => {
+                    const issue = allIssues.find(i => String(i.id) === String(id));
+                    if (issue) {
+                        Object.assign(issue, updateData);
+                    }
+                    if (currentView === 'issues') {
+                        renderIssuesTable();
+                    }
+                }
+            );
+            
+            closeEditIssueModal();
+        });
+
+        // Delete issue log
+        async function deleteIssue(issueId) {
+            if (confirm('Are you sure you want to permanently delete this issue log?')) {
+                await syncService.enqueue(
+                    'DELETE_ISSUE',
+                    `/api/issues/${issueId}`,
+                    'DELETE',
+                    null,
+                    () => {
+                        allIssues = allIssues.filter(i => String(i.id) !== String(issueId));
+                        updateSidebarBadges();
+                        if (currentView === 'issues') {
+                            renderIssuesTable();
+                        }
+                    }
+                );
+            }
+        }
+
+        // Render Outbound Issues table
+        function renderIssuesTable() {
+            const issuesTableBody = document.getElementById('issuesTableBody');
+            const issuesEmptyState = document.getElementById('issuesEmptyState');
+            if (!issuesTableBody) return;
+
+            issuesTableBody.innerHTML = '';
+            
+            const displayIssues = JSON.parse(JSON.stringify(allIssues));
+            applyIssueQueueMutations(displayIssues);
+
+            if (displayIssues.length === 0) {
+                issuesEmptyState.classList.remove('hidden');
+            } else {
+                issuesEmptyState.classList.add('hidden');
+            }
+
+            displayIssues.forEach(issue => {
+                const row = `
+                    <tr class="hover:bg-indigo-50/30 dark:hover:bg-slate-850/20 transition-all duration-150 border-b border-slate-100 dark:border-slate-800/80">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold">${issue.date}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-slate-900 dark:text-white">${issue.mrnNum || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-800 dark:text-slate-250">${issue.itemName}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-slate-900 dark:text-white">${issue.qty}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-705 dark:text-slate-350">${issue.vehicleMachinery}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-705 dark:text-slate-350">${issue.issuedBy}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-550 dark:text-slate-400 font-medium truncate max-w-[155px]" title="${issue.notes || ''}">${issue.notes || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <button onclick="openEditIssueModal('${issue.id}')" class="p-2 bg-blue-50/50 dark:bg-slate-800/40 text-blue-600 dark:text-blue-400 hover:text-white dark:hover:text-white hover:bg-blue-650 dark:hover:bg-blue-650 rounded-xl transition duration-150 border border-blue-100/40 dark:border-slate-700/60" title="Edit Issue">
+                                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <button onclick="deleteIssue('${issue.id}')" class="p-2 bg-rose-50/50 dark:bg-slate-800/40 text-rose-600 dark:text-rose-455 hover:text-white dark:hover:text-white hover:bg-rose-655 dark:hover:bg-rose-655 rounded-xl transition duration-150 border border-rose-100/40 dark:border-slate-700/60" title="Delete Issue">
+                                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                issuesTableBody.insertAdjacentHTML('beforeend', row);
+            });
         }
     </script>
 </body>
