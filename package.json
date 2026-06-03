@@ -1,14 +1,16 @@
 {
   "name": "delivery-monitor",
   "version": "1.0.0",
-  "description": "Delivery Monitor Dashboard with MS Access Database",
+  "description": "Inventory / Delivery Monitor Dashboard (fast embedded SQLite engine)",
   "main": "server.js",
   "scripts": {
-    "setup": "node setup_db.js",
-    "migrate": "node migrate_data.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate": "node migrate_to_sqlite.js",
+    "migrate:force": "node migrate_to_sqlite.js --force",
+    "test:api": "node test_api.js"
   },
   "dependencies": {
+    "better-sqlite3": "^12.10.0",
     "express": "^4.21.0",
     "jsdom": "^29.1.1",
     "pdf-parse": "^2.4.5",
