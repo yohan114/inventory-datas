@@ -1,0 +1,11 @@
+node_modules/
+backups/
+_query_*.ps1
+*.log
+*.png
+*.json-bak
+temp/
+.idea/
+.vscode/
+.gemini/
+*.tmp
